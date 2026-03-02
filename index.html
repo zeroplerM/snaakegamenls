@@ -2,25 +2,25 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Snake Game</title>
+<title>Snake 2.0</title>
 <style>
 body{
   margin:0;
   background:#111;
   color:white;
-  font-family:Arial;
+  font-family:Arial, sans-serif;
   text-align:center;
 }
 canvas{
-  background:#000;
   display:none;
   margin:auto;
+  background:#000;
   border:3px solid #444;
 }
 button{
   padding:10px 20px;
   font-size:18px;
-  margin-top:20px;
+  margin:5px;
 }
 #message{
   position:absolute;
@@ -30,58 +30,80 @@ button{
   font-weight:bold;
   display:none;
 }
+.controls{
+  display:grid;
+  grid-template-columns:80px 80px 80px;
+  gap:5px;
+  justify-content:center;
+  margin-top:10px;
+}
 </style>
 </head>
 <body>
 
-<h1>Snake</h1>
+<h1>Snake 2.0</h1>
 <p>Highscore: <span id="highscore">0</span></p>
 <button id="startBtn">Start</button>
 <canvas id="game" width="400" height="400"></canvas>
+<div class="controls">
+  <div></div>
+  <button onclick="setDirection('up')">↑</button>
+  <div></div>
+  <button onclick="setDirection('left')">←</button>
+  <button onclick="setDirection('down')">↓</button>
+  <button onclick="setDirection('right')">→</button>
+</div>
 <div id="message"></div>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const startBtn = document.getElementById("startBtn");
-const message = document.getElementById("message");
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const startBtn=document.getElementById("startBtn");
+const message=document.getElementById("message");
 
-const grid = 20;
-let snake, food, dx, dy, score, speed, baseSpeed;
-let gameInterval;
+const grid=20;
+const colors=["lime","cyan","orange","violet","red","yellow"];
+
+let snake, dx, dy, score, speed, baseSpeed, gameInterval, food;
 let highscore = localStorage.getItem("snakeHigh") || 0;
-document.getElementById("highscore").textContent = highscore;
-
-const colors = ["lime","cyan","orange","violet","red","yellow"];
+document.getElementById("highscore").textContent=highscore;
 
 function startGame(){
   startBtn.style.display="none";
   canvas.style.display="block";
-  canvas.width=500;
-  canvas.height=500;
-
   snake=[{x:10,y:10}];
   dx=1; dy=0;
   score=0;
-  baseSpeed=200; // langsam starten
+  baseSpeed=200;
   speed=baseSpeed;
   spawnFood();
   clearInterval(gameInterval);
-  gameInterval=setInterval(update, speed);
+  gameInterval=setInterval(update,speed);
 }
 
 function spawnFood(){
-  food={
-    x:Math.floor(Math.random()*25),
-    y:Math.floor(Math.random()*25)
-  };
+  food={x:Math.floor(Math.random()*25),y:Math.floor(Math.random()*25)};
 }
 
-function update(){
-  const head={x:snake[0].x+dx, y:snake[0].y+dy};
+function setDirection(dir){
+  if(dir==="up" && dy!==1){dx=0; dy=-1;}
+  if(dir==="down" && dy!==-1){dx=0; dy=1;}
+  if(dir==="left" && dx!==1){dx=-1; dy=0;}
+  if(dir==="right" && dx!==-1){dx=1; dy=0;}
+}
 
-  if(head.x<0 || head.y<0 || head.x>=25 || head.y>=25 ||
-     snake.some(s=>s.x===head.x && s.y===head.y)){
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowUp") setDirection("up");
+  if(e.key==="ArrowDown") setDirection("down");
+  if(e.key==="ArrowLeft") setDirection("left");
+  if(e.key==="ArrowRight") setDirection("right");
+});
+
+function update(){
+  const head={x:snake[0].x+dx,y:snake[0].y+dy};
+
+  // Kollision Wand oder sich selbst
+  if(head.x<0 || head.y<0 || head.x>=25 || head.y>=25 || snake.some(s=>s.x===head.x && s.y===head.y)){
     endGame();
     return;
   }
@@ -100,21 +122,20 @@ function update(){
 }
 
 function handleEffects(){
-
-  // Geschwindigkeit erhöhen bis max bei 20
+  // Geschwindigkeit erhöhen bis Score 20
   if(score<=20){
-    let factor = 1 - (score*0.05);
-    speed = baseSpeed * factor;
+    let factor=1-(score*0.05);
+    speed=baseSpeed*factor;
     clearInterval(gameInterval);
-    gameInterval=setInterval(update, speed);
+    gameInterval=setInterval(update,speed);
   }
 
   // Farbwechsel alle 3
   if(score%3===0){
-    ctx.fillStyle = colors[(score/3)%colors.length];
+    ctx.fillStyle=colors[Math.floor(score/3)%colors.length];
   }
 
-  // Bei 5 Blöcken "toll nole"
+  // Bei Score=5 -> "toll nole"
   if(score===5){
     message.style.display="block";
     message.style.color="gold";
@@ -122,17 +143,16 @@ function handleEffects(){
     setTimeout(()=>{message.style.display="none"},2000);
   }
 
-  // Schneeeffekt alle 8
-  if(score%8===0){
+  // Schneeeffekt alle 8 -> 7 Sekunden 80% langsamer
+  if(score%8===0 && score!==0){
     let oldSpeed=speed;
     clearInterval(gameInterval);
-    speed=oldSpeed*1.8; // 80% langsamer
-    gameInterval=setInterval(update, speed);
-
+    speed=oldSpeed*1.8;
+    gameInterval=setInterval(update,speed);
     setTimeout(()=>{
       clearInterval(gameInterval);
       speed=oldSpeed;
-      gameInterval=setInterval(update, speed);
+      gameInterval=setInterval(update,speed);
     },7000);
   }
 }
@@ -141,11 +161,13 @@ function draw(){
   ctx.fillStyle="black";
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
+  // Food
   ctx.fillStyle="red";
   ctx.fillRect(food.x*grid,food.y*grid,grid,grid);
 
-  ctx.fillStyle="lime";
+  // Snake
   snake.forEach(s=>{
+    ctx.fillStyle="lime";
     ctx.fillRect(s.x*grid,s.y*grid,grid,grid);
   });
 }
@@ -164,14 +186,8 @@ function endGame(){
   }
 }
 
-document.addEventListener("keydown",e=>{
-  if(e.key==="ArrowUp" && dy!==1){dx=0;dy=-1;}
-  if(e.key==="ArrowDown" && dy!==-1){dx=0;dy=1;}
-  if(e.key==="ArrowLeft" && dx!==1){dx=-1;dy=0;}
-  if(e.key==="ArrowRight" && dx!==-1){dx=1;dy=0;}
-});
-
 startBtn.addEventListener("click",startGame);
 </script>
+
 </body>
 </html>
