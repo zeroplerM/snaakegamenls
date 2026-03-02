@@ -2,17 +2,17 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Snake 4.5 Neon Touch</title>
+<title>Snake 4.7 Arcade Touch</title>
 <style>
 body { margin:0; overflow:hidden; background:#111; font-family:Arial,sans-serif; color:white; text-align:center; }
 #container { display:flex; flex-direction:column; height:100vh; }
 #gameArea { flex:2; position:relative; }
-canvas { display:block; margin:auto; background:#f5f5dc; }
-#controlArea { flex:1; position:relative; background:#222; display:flex; justify-content:center; align-items:center; }
-#highscore { position:absolute; top:10px; left:10px; font-size:24px; }
-.controls { display:grid; grid-template-columns:80px 80px 80px; grid-template-rows:80px 80px 80px; gap:5px; width:75%; }
-button { padding:15px; font-size:22px; border:none; border-radius:8px; background:#0ff; color:#111; font-weight:bold; }
-#startBtn, #pauseBtn { position:absolute; right:10px; bottom:10px; width:80px; }
+canvas { display:block; margin:auto; background:#111; }
+#controlArea { flex:1; position:relative; background:#222; }
+#highscore { position:absolute; top:5px; left:5px; font-size:24px; }
+.controls { position:absolute; bottom:0; left:0; width:100%; height:100%; display:flex; justify-content:space-around; align-items:center; }
+button { border:none; border-radius:8px; font-weight:bold; background:#0ff; color:#111; }
+#startBtn, #pauseBtn { position:absolute; top:5px; right:5px; width:80px; height:50px; font-size:18px; }
 #message { position:absolute; width:100%; top:40%; font-size:40px; font-weight:bold; display:none; text-align:center; text-shadow:0 0 10px #0ff,0 0 20px #0ff; }
 </style>
 </head>
@@ -26,8 +26,10 @@ button { padding:15px; font-size:22px; border:none; border-radius:8px; backgroun
   <div id="controlArea">
     <p id="highscore">Highscore: 0</p>
     <div class="controls">
-      <div></div><button id="upBtn">↑</button><div></div>
-      <button id="leftBtn">←</button><button id="downBtn">↓</button><button id="rightBtn">→</button>
+      <button id="upBtn" style="flex:1; height:33%">↑</button>
+      <button id="leftBtn" style="flex:1; height:33%">←</button>
+      <button id="downBtn" style="flex:1; height:33%">↓</button>
+      <button id="rightBtn" style="flex:1; height:33%">→</button>
     </div>
     <button id="startBtn">Start</button>
     <button id="pauseBtn">Pause</button>
@@ -165,7 +167,7 @@ function drawSnow(){
 }
 
 function draw(){
-  ctx.fillStyle="#f5f5dc";
+  ctx.fillStyle="#111";
   ctx.fillRect(0,0,canvas.width,canvas.height);
   drawSnow();
   // Food Glow
