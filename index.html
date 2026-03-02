@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Snake 3.1</title>
+<title>Snake 4.0 Neon</title>
 <style>
 body{
   margin:0;
@@ -15,12 +15,21 @@ body{
 canvas{
   display:block;
   margin:auto;
-  background:#fff;
 }
 button{
   padding:10px 20px;
   font-size:18px;
   margin:5px;
+  animation: pulse 1.5s infinite;
+  border:none;
+  border-radius:8px;
+  background:#0ff;
+  color:#111;
+  font-weight:bold;
+}
+@keyframes pulse{
+  0%,100%{box-shadow:0 0 10px #0ff;}
+  50%{box-shadow:0 0 25px #0ff;}
 }
 #message{
   position:absolute;
@@ -30,6 +39,7 @@ button{
   font-weight:bold;
   display:none;
   text-align:center;
+  text-shadow:0 0 10px #0ff,0 0 20px #0ff;
 }
 .controls{
   display:grid;
@@ -42,7 +52,7 @@ button{
 </head>
 <body>
 
-<h1>Snake 3.1</h1>
+<h1 style="text-shadow:0 0 10px #0ff,0 0 20px #0ff;">Snake 4.0 Neon</h1>
 <p>Highscore: <span id="highscore">0</span></p>
 <button id="startBtn">Start</button>
 <canvas id="game"></canvas>
@@ -72,9 +82,9 @@ let snake, dx, dy, score, speed, baseSpeed, gameInterval, food;
 let highscore = localStorage.getItem("snakeHigh") || 0;
 document.getElementById("highscore").textContent=highscore;
 
-let grid=20; 
+let grid=20;
 let patternCanvas, patternCtx, pattern;
-let snowflakes=[]; // Für Schneeeffekt
+let snowflakes=[];
 let snowActive=false;
 
 function createPattern(){
@@ -123,6 +133,20 @@ function startGame(){
   gameInterval=setInterval(update,speed);
   audio.currentTime=0;
   audio.play();
+  fadeInCanvas();
+}
+
+function fadeInCanvas(){
+  canvas.style.opacity=0;
+  let alpha=0;
+  const fade=setInterval(()=>{
+    alpha+=0.05;
+    canvas.style.opacity=alpha;
+    if(alpha>=1) clearInterval(fade);
+  },30);
+  message.innerText="Ready!";
+  message.style.display="block";
+  setTimeout(()=>{message.style.display="none"},1000);
 }
 
 function spawnFood(){
@@ -165,7 +189,6 @@ function update(){
 }
 
 function handleEffects(){
-  // Geschwindigkeit erhöhen
   if(score<=20){
     let factor=1-(score*0.05);
     speed=baseSpeed*factor;
@@ -173,12 +196,10 @@ function handleEffects(){
     gameInterval=setInterval(update,speed);
   }
 
-  // Farbwechsel alle 3
   if(score%3===0){
     ctx.fillStyle=colors[Math.floor(score/3)%colors.length];
   }
 
-  // "toll nole" bei 5
   if(score===5){
     message.style.display="block";
     message.style.color="gold";
@@ -186,7 +207,6 @@ function handleEffects(){
     setTimeout(()=>{message.style.display="none"},2000);
   }
 
-  // Schneeeffekt alle 8 Blöcke
   if(score%8===0 && score!==0){
     snowActive=true;
     snowflakes=[];
@@ -210,23 +230,32 @@ function drawSnow(){
 }
 
 function draw(){
-  // Hintergrund
   ctx.fillStyle=pattern;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // Food als Kugel
-  ctx.fillStyle="red";
+  // Food mit Glow
+  ctx.shadowColor="#0ff";
+  ctx.shadowBlur=15;
+  ctx.fillStyle="#ff0";
   ctx.beginPath();
   ctx.arc(food.x*grid+grid/2,food.y*grid+grid/2,grid/2,0,Math.PI*2);
   ctx.fill();
+  ctx.shadowBlur=0;
 
-  // Snake
+  // Snake mit Neon Glow
   snake.forEach((s,i)=>{
+    ctx.shadowColor=colors[i%colors.length];
+    ctx.shadowBlur=20;
     ctx.fillStyle=colors[i%colors.length];
     ctx.fillRect(s.x*grid,s.y*grid,grid,grid);
   });
+  ctx.shadowBlur=0;
 
-  // Schneeeffekt
+  // Neon-Rahmen
+  ctx.strokeStyle="#0ff";
+  ctx.lineWidth=5;
+  ctx.strokeRect(0,0,canvas.width,canvas.height);
+
   drawSnow();
 }
 
