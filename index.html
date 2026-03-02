@@ -2,18 +2,18 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Snake 4.4 Neon Touch</title>
+<title>Snake 4.5 Neon Touch</title>
 <style>
 body { margin:0; overflow:hidden; background:#111; font-family:Arial,sans-serif; color:white; text-align:center; }
 #container { display:flex; flex-direction:column; height:100vh; }
 #gameArea { flex:2; position:relative; }
 canvas { display:block; margin:auto; background:#f5f5dc; }
-#controlArea { flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#222; }
-button { padding:15px; font-size:22px; margin:5px; border:none; border-radius:8px; background:#0ff; color:#111; font-weight:bold; width:80%; }
-button:hover { cursor:pointer; }
+#controlArea { flex:1; position:relative; background:#222; display:flex; justify-content:center; align-items:center; }
+#highscore { position:absolute; top:10px; left:10px; font-size:24px; }
+.controls { display:grid; grid-template-columns:80px 80px 80px; grid-template-rows:80px 80px 80px; gap:5px; width:75%; }
+button { padding:15px; font-size:22px; border:none; border-radius:8px; background:#0ff; color:#111; font-weight:bold; }
+#startBtn, #pauseBtn { position:absolute; right:10px; bottom:10px; width:80px; }
 #message { position:absolute; width:100%; top:40%; font-size:40px; font-weight:bold; display:none; text-align:center; text-shadow:0 0 10px #0ff,0 0 20px #0ff; }
-#highscore { font-size:24px; margin-bottom:10px; }
-.controls { display:grid; grid-template-columns:80px 80px 80px; grid-template-rows:80px 80px 80px; gap:5px; justify-items:center; align-items:center; width:80%; }
 </style>
 </head>
 <body>
@@ -25,12 +25,12 @@ button:hover { cursor:pointer; }
   </div>
   <div id="controlArea">
     <p id="highscore">Highscore: 0</p>
-    <button id="startBtn">Start</button>
-    <button id="pauseBtn">Pause</button>
     <div class="controls">
       <div></div><button id="upBtn">↑</button><div></div>
       <button id="leftBtn">←</button><button id="downBtn">↓</button><button id="rightBtn">→</button>
     </div>
+    <button id="startBtn">Start</button>
+    <button id="pauseBtn">Pause</button>
   </div>
 </div>
 
@@ -52,13 +52,14 @@ const leftBtn=document.getElementById("leftBtn");
 const rightBtn=document.getElementById("rightBtn");
 
 const colors=["#39ff14","#00ffff","#ff00ff","#ff6347","#ffd700","#ff4500"];
-let snake, dx, dy, score, speed, baseSpeed, gameInterval, food;
+let snake=[], dx=0, dy=0, score=0, speed=200, baseSpeed=200, gameInterval=null, food=null;
 let highscore=localStorage.getItem("snakeHigh")||0;
 document.getElementById("highscore").textContent="Highscore: "+highscore;
 
 let grid=20;
 let snowflakes=[], snowActive=false;
 let paused=false;
+let gameStarted=false;
 
 function resizeCanvas(){
   canvas.width=document.getElementById("gameArea").clientWidth;
@@ -80,6 +81,7 @@ function startGame(){
   startBtn.disabled=true; pauseBtn.disabled=false;
   fadeInCanvas();
   paused=false;
+  gameStarted=true;
 }
 
 function fadeInCanvas(){
@@ -96,38 +98,32 @@ function fadeInCanvas(){
 function spawnFood(){ food={x:Math.floor(Math.random()*25),y:Math.floor(Math.random()*25)}; }
 
 function setDirection(dir){
+  if(!gameStarted) return;
   if(dir==="up" && dy!==1){dx=0; dy=-1;}
   if(dir==="down" && dy!==-1){dx=0; dy=1;}
   if(dir==="left" && dx!==1){dx=-1; dy=0;}
   if(dir==="right" && dx!==-1){dx=1; dy=0;}
 }
 
-document.addEventListener("keydown",e=>{
-  if(e.key==="ArrowUp") setDirection("up");
-  if(e.key==="ArrowDown") setDirection("down");
-  if(e.key==="ArrowLeft") setDirection("left");
-  if(e.key==="ArrowRight") setDirection("right");
-});
-
-// Button Steuerung
+// Keyboard & Button Events
+document.addEventListener("keydown",e=>{ setDirection({ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right"}[e.key]); });
 upBtn.addEventListener("click",()=>setDirection("up"));
 downBtn.addEventListener("click",()=>setDirection("down"));
 leftBtn.addEventListener("click",()=>setDirection("left"));
 rightBtn.addEventListener("click",()=>setDirection("right"));
 
-// ---------------- Swipe-Steuerung ----------------
-let touchStartX=0, touchStartY=0, touchEndX=0, touchEndY=0;
+// Swipe
+let touchStartX=0, touchStartY=0;
 canvas.addEventListener("touchstart", e=>{ const t=e.touches[0]; touchStartX=t.clientX; touchStartY=t.clientY; });
 canvas.addEventListener("touchend", e=>{
-  const t=e.changedTouches[0]; touchEndX=t.clientX; touchEndY=t.clientY;
-  const dxSwipe = touchEndX - touchStartX;
-  const dySwipe = touchEndY - touchStartY;
+  if(!gameStarted) return;
+  const t=e.changedTouches[0]; 
+  const dxSwipe = t.clientX - touchStartX;
+  const dySwipe = t.clientY - touchStartY;
   if(Math.abs(dxSwipe) > Math.abs(dySwipe)){
-    if(dxSwipe > 20) setDirection("right");
-    else if(dxSwipe < -20) setDirection("left");
+    if(dxSwipe > 20) setDirection("right"); else if(dxSwipe < -20) setDirection("left");
   } else {
-    if(dySwipe > 20) setDirection("down");
-    else if(dySwipe < -20) setDirection("up");
+    if(dySwipe > 20) setDirection("down"); else if(dySwipe < -20) setDirection("up");
   }
 });
 
@@ -171,21 +167,17 @@ function drawSnow(){
 function draw(){
   ctx.fillStyle="#f5f5dc";
   ctx.fillRect(0,0,canvas.width,canvas.height);
-
   drawSnow();
-
-  // Food mit Glow
+  // Food Glow
   ctx.shadowColor="#0ff"; ctx.shadowBlur=15; ctx.fillStyle="#ff0";
   ctx.beginPath(); ctx.arc(food.x*grid+grid/2,food.y*grid+grid/2,grid/2,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
-
   // Snake Neon
   snake.forEach((s,i)=>{ ctx.shadowColor=colors[i%colors.length]; ctx.shadowBlur=20; ctx.fillStyle=colors[i%colors.length]; ctx.fillRect(s.x*grid,s.y*grid,grid,grid); }); ctx.shadowBlur=0;
 }
 
 function endGame(){ 
-  clearInterval(gameInterval); 
-  message.style.display="block"; message.style.color="white"; message.innerText="Game Over"; 
-  startBtn.disabled=false; pauseBtn.disabled=true; audio.pause();
+  clearInterval(gameInterval); message.style.display="block"; message.style.color="white"; message.innerText="Game Over"; startBtn.disabled=false; pauseBtn.disabled=true; audio.pause();
+  gameStarted=false;
   if(score>highscore){ localStorage.setItem("snakeHigh",score); document.getElementById("highscore").textContent="Highscore: "+score; }
 }
 
