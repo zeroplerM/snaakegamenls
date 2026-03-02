@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Snake 4.0 Neon</title>
+<title>Snake 4.1 Neon Touch</title>
 <style>
 body{
   margin:0;
@@ -17,9 +17,9 @@ canvas{
   margin:auto;
 }
 button{
-  padding:10px 20px;
-  font-size:18px;
-  margin:5px;
+  padding:15px;
+  font-size:22px;
+  margin:3px;
   animation: pulse 1.5s infinite;
   border:none;
   border-radius:8px;
@@ -42,27 +42,32 @@ button{
   text-shadow:0 0 10px #0ff,0 0 20px #0ff;
 }
 .controls{
+  position:fixed;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
   display:grid;
   grid-template-columns:80px 80px 80px;
+  grid-template-rows:80px 80px 80px;
   gap:5px;
-  justify-content:center;
-  margin-top:10px;
+  justify-items:center;
+  align-items:center;
 }
 </style>
 </head>
 <body>
 
-<h1 style="text-shadow:0 0 10px #0ff,0 0 20px #0ff;">Snake 4.0 Neon</h1>
+<h1 style="text-shadow:0 0 10px #0ff,0 0 20px #0ff;">Snake 4.1 Neon</h1>
 <p>Highscore: <span id="highscore">0</span></p>
 <button id="startBtn">Start</button>
 <canvas id="game"></canvas>
 <div class="controls">
   <div></div>
-  <button onclick="setDirection('up')">↑</button>
+  <button id="upBtn">↑</button>
   <div></div>
-  <button onclick="setDirection('left')">←</button>
-  <button onclick="setDirection('down')">↓</button>
-  <button onclick="setDirection('right')">→</button>
+  <button id="leftBtn">←</button>
+  <button id="downBtn">↓</button>
+  <button id="rightBtn">→</button>
 </div>
 <div id="message"></div>
 
@@ -76,6 +81,11 @@ const ctx=canvas.getContext("2d");
 const startBtn=document.getElementById("startBtn");
 const message=document.getElementById("message");
 const audio=document.getElementById("bgmusic");
+
+const upBtn=document.getElementById("upBtn");
+const downBtn=document.getElementById("downBtn");
+const leftBtn=document.getElementById("leftBtn");
+const rightBtn=document.getElementById("rightBtn");
 
 const colors=["#39ff14","#00ffff","#ff00ff","#ff6347","#ffd700","#ff4500"];
 let snake, dx, dy, score, speed, baseSpeed, gameInterval, food;
@@ -114,7 +124,6 @@ function resizeCanvas(){
   canvas.height=window.innerHeight;
   grid=Math.floor(Math.min(canvas.width,canvas.height)/25);
 }
-
 window.addEventListener("resize",resizeCanvas);
 
 function startGame(){
@@ -167,16 +176,19 @@ document.addEventListener("keydown",e=>{
   if(e.key==="ArrowRight") setDirection("right");
 });
 
+// Touch / Button Steuerung
+upBtn.addEventListener("click",()=>setDirection("up"));
+downBtn.addEventListener("click",()=>setDirection("down"));
+leftBtn.addEventListener("click",()=>setDirection("left"));
+rightBtn.addEventListener("click",()=>setDirection("right"));
+
 function update(){
   const head={x:snake[0].x+dx,y:snake[0].y+dy};
-
   if(head.x<0||head.y<0||head.x>=25||head.y>=25||snake.some(s=>s.x===head.x&&s.y===head.y)){
     endGame();
     return;
   }
-
   snake.unshift(head);
-
   if(head.x===food.x && head.y===food.y){
     score++;
     spawnFood();
@@ -184,7 +196,6 @@ function update(){
   }else{
     snake.pop();
   }
-
   draw();
 }
 
@@ -195,18 +206,15 @@ function handleEffects(){
     clearInterval(gameInterval);
     gameInterval=setInterval(update,speed);
   }
-
   if(score%3===0){
     ctx.fillStyle=colors[Math.floor(score/3)%colors.length];
   }
-
   if(score===5){
     message.style.display="block";
     message.style.color="gold";
     message.innerText="toll nole";
     setTimeout(()=>{message.style.display="none"},2000);
   }
-
   if(score%8===0 && score!==0){
     snowActive=true;
     snowflakes=[];
