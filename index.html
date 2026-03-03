@@ -2,234 +2,177 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Snake 5.0</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOLE Snake</title>
+
 <style>
 body{
-  margin:0;
-  background:#111;
-  font-family:Arial;
-  overflow:hidden;
-  color:white;
+margin:0;
+background:linear-gradient(135deg,#1e1e2f,#111);
+font-family:Arial;
+display:flex;
+flex-direction:column;
+height:100vh;
+overflow:hidden;
+color:white;
 }
 
-#container{
-  display:flex;
-  flex-direction:column;
-  height:100vh;
+#topBar{
+position:absolute;
+top:10px;
+right:10px;
+z-index:10;
 }
 
-/* ---------------- SPIELFELD ---------------- */
-#gameArea{
-  flex:2;
-  position:relative;
+button{
+padding:12px 20px;
+margin-left:10px;
+border:none;
+border-radius:10px;
+font-size:18px;
+background:#00bcd4;
+color:white;
+}
+
+#gameContainer{
+height:66vh;
+display:flex;
+justify-content:center;
+align-items:center;
 }
 
 canvas{
-  display:block;
-  margin:auto;
-  background:#111;
+background:#222;
+border-radius:20px;
+box-shadow:0 0 30px rgba(0,255,255,0.4);
 }
 
-/* ---------------- STEUERBEREICH ---------------- */
-#controlArea{
-  flex:1;
-  display:flex;
-  background:#222;
-  padding:10px;
-  box-sizing:border-box;
-}
-
-/* LINKS: Pfeile */
-#arrowArea{
-  flex:2;
-  display:flex;
-  justify-content:center;
-  align-items:center;
+#controls{
+height:34vh;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
 }
 
 #arrows{
-  display:grid;
-  grid-template-columns:120px 120px 120px;
-  grid-template-rows:120px 120px 120px;
-  gap:10px;
+display:grid;
+grid-template-columns:repeat(3,120px);
+grid-template-rows:repeat(2,120px);
+gap:15px;
+justify-content:center;
+align-items:center;
 }
 
-/* Pfeile richtig groß */
-.arrowBtn{
-  font-size:40px;
-  background:#00ffff;
-  border:none;
-  border-radius:15px;
-  font-weight:bold;
-}
-
-/* RECHTS: Start / Pause */
-#buttonArea{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  gap:20px;
-}
-
-.controlBtn{
-  width:120px;
-  height:60px;
-  font-size:20px;
-  background:#ffcc00;
-  border:none;
-  border-radius:10px;
-  font-weight:bold;
+.arrow{
+background:#333;
+border-radius:20px;
+display:flex;
+justify-content:center;
+align-items:center;
+font-size:50px;
 }
 
 #message{
-  position:absolute;
-  width:100%;
-  top:40%;
-  text-align:center;
-  font-size:40px;
-  font-weight:bold;
-  display:none;
-}
-
-#highscore{
-  position:absolute;
-  top:10px;
-  left:10px;
-  font-size:22px;
+position:absolute;
+top:40%;
+left:50%;
+transform:translate(-50%,-50%);
+font-size:10vw;
+color:gold;
+display:none;
+text-shadow:0 0 20px gold;
 }
 </style>
 </head>
+
 <body>
 
-<div id="container">
-
-<div id="gameArea">
-<canvas id="game"></canvas>
-<div id="message"></div>
-<div id="highscore"></div>
+<div id="topBar">
+<button onclick="startGame()">Start</button>
+<button onclick="pauseGame()">Pause</button>
 </div>
 
-<div id="controlArea">
+<div id="message">SUPER NOLE</div>
 
-<div id="arrowArea">
+<div id="gameContainer">
+<canvas id="game"></canvas>
+</div>
+
+<div id="controls">
 <div id="arrows">
 <div></div>
-<button class="arrowBtn" id="up">↑</button>
+<div class="arrow" onclick="changeDir('up')">↑</div>
 <div></div>
-
-<button class="arrowBtn" id="left">←</button>
-<button class="arrowBtn" id="down">↓</button>
-<button class="arrowBtn" id="right">→</button>
-</div>
-</div>
-
-<div id="buttonArea">
-<button class="controlBtn" id="start">Start</button>
-<button class="controlBtn" id="pause">Pause</button>
-</div>
-
+<div class="arrow" onclick="changeDir('left')">←</div>
+<div class="arrow" onclick="changeDir('down')">↓</div>
+<div class="arrow" onclick="changeDir('right')">→</div>
 </div>
 </div>
 
 <script>
 const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
-const msg=document.getElementById("message");
-const startBtn=document.getElementById("start");
-const pauseBtn=document.getElementById("pause");
-const highscoreEl=document.getElementById("highscore");
 
-const up=document.getElementById("up");
-const down=document.getElementById("down");
-const left=document.getElementById("left");
-const right=document.getElementById("right");
-
-let gridCount=25;
-let gridSize;
-let snake=[];
-let dx=0, dy=0;
+let size;
+let snake;
+let dir;
 let food;
+let speed;
+let baseSpeed=300; // 80% langsamer
+let gameInterval;
+let running=false;
 let score=0;
-let interval=null;
-let speed=200;
-let baseSpeed=200;
-let gameRunning=false;
-let paused=false;
-let snow=false;
-let snowflakes=[];
-
-let highscore=localStorage.getItem("snakeHigh") || 0;
-highscoreEl.innerText="Highscore: "+highscore;
+let highscore=localStorage.getItem("noleHigh")||0;
 
 function resize(){
-canvas.width=canvas.parentElement.clientWidth;
-canvas.height=canvas.parentElement.clientHeight;
-gridSize=Math.floor(Math.min(canvas.width,canvas.height)/gridCount);
+canvas.width=window.innerWidth*0.9;
+canvas.height=window.innerHeight*0.6;
+size=Math.floor(canvas.width/25);
 }
-window.addEventListener("resize",resize);
 resize();
+window.addEventListener("resize",resize);
 
-/* ---------------- START ---------------- */
-startBtn.onclick=()=>{
-if(gameRunning) return;
-
-snake=[{x:12,y:12}];
-dx=1; dy=0;
-score=0;
+function init(){
+snake=[{x:10,y:10}];
+dir="right";
+food=randomFood();
 speed=baseSpeed;
-snow=false;
-snowflakes=[];
-spawnFood();
-
-interval=setInterval(update,speed);
-gameRunning=true;
-paused=false;
-msg.style.display="none";
-};
-
-/* ---------------- PAUSE ---------------- */
-pauseBtn.onclick=()=>{
-if(!gameRunning) return;
-
-if(!paused){
-clearInterval(interval);
-paused=true;
-pauseBtn.innerText="Resume";
-}else{
-interval=setInterval(update,speed);
-paused=false;
-pauseBtn.innerText="Pause";
-}
-};
-
-/* ---------------- STEUERUNG ---------------- */
-function setDir(x,y){
-if(!gameRunning) return;
-if(dx===-x && dy===-y) return;
-dx=x; dy=y;
+score=0;
+updateSpeed();
+draw();
 }
 
-up.onclick=()=>setDir(0,-1);
-down.onclick=()=>setDir(0,1);
-left.onclick=()=>setDir(-1,0);
-right.onclick=()=>setDir(1,0);
+function startGame(){
+if(running) return;
+running=true;
+init();
+startMusic();
+loop();
+}
 
-/* ---------------- SPIEL ---------------- */
-function spawnFood(){
-food={
-x:Math.floor(Math.random()*gridCount),
-y:Math.floor(Math.random()*gridCount)
-};
+function pauseGame(){
+running=false;
+clearTimeout(gameInterval);
+}
+
+function loop(){
+if(!running) return;
+update();
+draw();
+gameInterval=setTimeout(loop,speed);
 }
 
 function update(){
-let head={x:snake[0].x+dx,y:snake[0].y+dy};
+let head={...snake[0]};
+if(dir==="up") head.y--;
+if(dir==="down") head.y++;
+if(dir==="left") head.x--;
+if(dir==="right") head.x++;
 
-if(head.x<0||head.y<0||head.x>=gridCount||head.y>=gridCount||
+if(head.x<0||head.y<0||head.x>24||head.y>24||
 snake.some(s=>s.x===head.x&&s.y===head.y)){
-endGame();
+gameOver();
 return;
 }
 
@@ -237,78 +180,98 @@ snake.unshift(head);
 
 if(head.x===food.x&&head.y===food.y){
 score++;
-spawnFood();
-handleEffects();
+updateSpeed();
+food=randomFood();
+if(score%3===0) showMessage();
 }else{
 snake.pop();
 }
-
-draw();
 }
 
-function handleEffects(){
-
-// Speed steigern
-if(score<=20){
-speed=baseSpeed*(1-(score*0.04));
-clearInterval(interval);
-interval=setInterval(update,speed);
-}
-
-// 5 Punkte
-if(score===5){
-msg.innerText="toll nole";
-msg.style.color="gold";
-msg.style.display="block";
-setTimeout(()=>msg.style.display="none",2000);
-}
-
-// Schnee ab 6
-if(score>=6){
-snow=true;
-speed*=1.3;
-clearInterval(interval);
-interval=setInterval(update,speed);
-}
+function updateSpeed(){
+speed=baseSpeed*Math.pow(0.9,score);
 }
 
 function draw(){
-ctx.fillStyle="#111";
-ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.clearRect(0,0,canvas.width,canvas.height);
 
-// Schnee
-if(snow){
-ctx.fillStyle="white";
-for(let i=0;i<40;i++){
-let x=Math.random()*canvas.width;
-let y=Math.random()*canvas.height;
-ctx.fillRect(x,y,2,2);
-}
-}
-
-// Food
-ctx.fillStyle="#ff0";
-ctx.fillRect(food.x*gridSize,food.y*gridSize,gridSize,gridSize);
-
-// Snake
-ctx.fillStyle="#0ff";
-snake.forEach(s=>{
-ctx.fillRect(s.x*gridSize,s.y*gridSize,gridSize,gridSize);
+snake.forEach((s,i)=>{
+ctx.fillStyle=`hsl(${(score*40)%360},100%,50%)`;
+ctx.fillRect(s.x*size,s.y*size,size-2,size-2);
 });
+
+ctx.fillStyle="red";
+ctx.fillRect(food.x*size,food.y*size,size-2,size-2);
+
+ctx.fillStyle="white";
+ctx.fillText("Score: "+score,10,20);
+ctx.fillText("High: "+highscore,10,40);
 }
 
-function endGame(){
-clearInterval(interval);
-gameRunning=false;
-msg.innerText="Game Over";
-msg.style.color="white";
-msg.style.display="block";
+function randomFood(){
+return{
+x:Math.floor(Math.random()*25),
+y:Math.floor(Math.random()*25)
+};
+}
 
+function changeDir(newDir){
+if(!running) return;
+dir=newDir;
+}
+
+function gameOver(){
+running=false;
 if(score>highscore){
-localStorage.setItem("snakeHigh",score);
-highscoreEl.innerText="Highscore: "+score;
+highscore=score;
+localStorage.setItem("noleHigh",highscore);
 }
+alert("Game Over");
+}
+
+function showMessage(){
+const msg=document.getElementById("message");
+msg.style.display="block";
+setTimeout(()=>msg.style.display="none",3000);
+}
+
+/* SWIPE CONTROL */
+let startX,startY;
+canvas.addEventListener("touchstart",e=>{
+startX=e.touches[0].clientX;
+startY=e.touches[0].clientY;
+});
+
+canvas.addEventListener("touchend",e=>{
+let dx=e.changedTouches[0].clientX-startX;
+let dy=e.changedTouches[0].clientY-startY;
+if(Math.abs(dx)>Math.abs(dy)){
+if(dx>0) changeDir("right");
+else changeDir("left");
+}else{
+if(dy>0) changeDir("down");
+else changeDir("up");
+}
+});
+
+/* MUSIC (WebAudio Beat Loop) */
+let audioCtx;
+function startMusic(){
+if(audioCtx) return;
+audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+setInterval(()=>{
+let osc=audioCtx.createOscillator();
+let gain=audioCtx.createGain();
+osc.connect(gain);
+gain.connect(audioCtx.destination);
+osc.frequency.value=200+Math.random()*400;
+osc.type="triangle";
+gain.gain.setValueAtTime(0.1,audioCtx.currentTime);
+osc.start();
+osc.stop(audioCtx.currentTime+0.2);
+},400);
 }
 </script>
+
 </body>
 </html>
