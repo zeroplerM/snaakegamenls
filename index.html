@@ -43,8 +43,9 @@ body{
 }
 
 #controls{
-    width:85%;
-    height:85%;              /* etwas kleiner */
+    width:75%;
+    height:65%;
+    margin-top:-10px;              /* etwas kleiner */
     display:grid;
     grid-template-columns:1fr 1fr 1fr;
     grid-template-rows:1fr 1fr 1fr;
@@ -129,7 +130,6 @@ canvas{
         <div></div>
     </div>
 </div>
-
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -138,72 +138,67 @@ canvas.width = document.getElementById("gameArea").clientWidth;
 canvas.height = document.getElementById("gameArea").clientHeight;
 
 let grid = 25;
-let snake;
-let direction;
-let food;
-let running = false;
-let score = 0;
-let highscore = localStorage.getItem("noleHigh") || 0;
-let snowActive = false;
-let snowParticles = [];
-let hue = 0;
+let snake, direction, food;
+let obstacle = null;
+let enemy = null;
+let running=false;
+let score=0;
+let highscore=localStorage.getItem("noleHigh")||0;
 
-/* Startgeschwindigkeit = 10% der alten Basis */
-let baseSpeed = 500;   // sehr langsam
-let speed = baseSpeed;
+let baseSpeed=400;       // Startgeschwindigkeit
+let currentSpeed=baseSpeed;
+
+let snowActive=false;
+let snowTimeout=null;
+
+let snowParticles=[];
+let hue=0;
 
 document.getElementById("highscoreText").innerText="Highscore: "+highscore;
 
 function initGame(){
-    snake = [{x:10,y:10}];
-    direction = "right";
-    food = randomFood();
-    score = 0;
-    speed = baseSpeed;
-    snowActive = false;
-    snowParticles = [];
+    snake=[{x:10,y:10}];
+    direction="right";
+    food=randomFood();
+    obstacle=null;
+    enemy=null;
+    score=0;
+    baseSpeed=400;
+    currentSpeed=baseSpeed;
+    snowActive=false;
+    snowParticles=[];
 }
 
 function randomFood(){
-    return {
-        x: Math.floor(Math.random()*(canvas.width/grid)),
-        y: Math.floor(Math.random()*(canvas.height/grid))
+    return{
+        x:Math.floor(Math.random()*(canvas.width/grid)),
+        y:Math.floor(Math.random()*(canvas.height/grid))
     };
 }
 
-/* ===== Steuerung ===== */
-
+/* Steuerung */
 document.querySelectorAll(".btn").forEach(btn=>{
-    btn.addEventListener("click",()=>{
-        direction = btn.dataset.dir;
-    });
+    btn.addEventListener("click",()=>direction=btn.dataset.dir);
 });
 
-let touchStartX=0;
-let touchStartY=0;
-
+let tx=0,ty=0;
 canvas.addEventListener("touchstart",e=>{
     e.preventDefault();
-    touchStartX=e.touches[0].clientX;
-    touchStartY=e.touches[0].clientY;
-},{passive:false});
-
-canvas.addEventListener("touchmove",e=>{
-    e.preventDefault();
+    tx=e.touches[0].clientX;
+    ty=e.touches[0].clientY;
 },{passive:false});
 
 canvas.addEventListener("touchend",e=>{
-    let dx=e.changedTouches[0].clientX-touchStartX;
-    let dy=e.changedTouches[0].clientY-touchStartY;
+    let dx=e.changedTouches[0].clientX-tx;
+    let dy=e.changedTouches[0].clientY-ty;
     if(Math.abs(dx)>Math.abs(dy)){
-        direction = dx>0?"right":"left";
-    } else {
-        direction = dy>0?"down":"up";
+        direction=dx>0?"right":"left";
+    }else{
+        direction=dy>0?"down":"up";
     }
 },{passive:false});
 
-/* ===== Game Loop ===== */
-
+/* Game Loop */
 function gameLoop(){
     if(!running) return;
 
@@ -211,11 +206,11 @@ function gameLoop(){
         requestAnimationFrame(gameLoop);
         update();
         draw();
-    },speed);
+    },currentSpeed);
 }
 
 function update(){
-    let head = {...snake[0]};
+    let head={...snake[0]};
 
     if(direction==="right") head.x++;
     if(direction==="left") head.x--;
@@ -223,10 +218,18 @@ function update(){
     if(direction==="down") head.y++;
 
     if(head.x<0||head.y<0||
-       head.x>canvas.width/grid||
-       head.y>canvas.height/grid){
+       head.x>=canvas.width/grid||
+       head.y>=canvas.height/grid){
         gameOver();
         return;
+    }
+
+    if(obstacle){
+        for(let b of obstacle){
+            if(head.x===b.x && head.y===b.y){
+                gameOver();
+            }
+        }
     }
 
     snake.unshift(head);
@@ -235,44 +238,119 @@ function update(){
 
         score++;
 
-        /* Pro Stein 10% schneller */
-        speed *= 0.80;
+        /* 10% schneller – immer */
+        baseSpeed *= 0.9;
 
-        food = randomFood();
-
-        if(score>=6){
-            snowActive = true;
-            speed *= 1.5; // 30% langsamer bei Schnee
+        if(!snowActive){
+            currentSpeed = baseSpeed;
         }
 
-    } else {
+        food=randomFood();
+
+        /* Schnee bei 6,12,18,... */
+        if(score % 6 === 0){
+            startSnow();
+        }
+
+        if(score>=10 && !obstacle){
+            createObstacle();
+        }
+
+        if(score>=20 && !enemy){
+            enemy={x:0,y:0};
+        }
+
+    }else{
         snake.pop();
+    }
+
+    updateEnemy();
+}
+
+function startSnow(){
+    snowActive=true;
+
+    /* Während Schnee 50% langsamer */
+    currentSpeed = baseSpeed * 1.5;
+
+    clearTimeout(snowTimeout);
+    snowTimeout = setTimeout(()=>{
+        snowActive=false;
+
+        /* Nach Schnee: letzte Geschwindigkeit +10% Bonus */
+        baseSpeed *= 0.9;
+        currentSpeed = baseSpeed;
+
+    },4000);
+}
+
+function createObstacle(){
+    obstacle=[];
+    let gap=Math.floor(Math.random()*15)+3;
+    for(let i=0;i<20;i++){
+        if(i!==gap){
+            obstacle.push({x:i,y:8});
+        }
+    }
+}
+
+function updateEnemy(){
+    if(!enemy) return;
+
+    let head=snake[0];
+
+    if(enemy.x<head.x) enemy.x++;
+    else if(enemy.x>head.x) enemy.x--;
+
+    if(enemy.y<head.y) enemy.y++;
+    else if(enemy.y>head.y) enemy.y--;
+
+    if(enemy.x===head.x && enemy.y===head.y){
+        gameOver();
     }
 }
 
 function draw(){
-    hue += 1;
-    ctx.fillStyle="hsl("+hue+",50%,10%)";
+    hue+=1;
+    ctx.fillStyle="hsl("+hue+",50%,8%)";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     snake.forEach(part=>{
+        ctx.shadowBlur=15;
+        ctx.shadowColor="hsl("+hue+",100%,50%)";
         ctx.fillStyle="hsl("+hue+",80%,50%)";
         ctx.fillRect(part.x*grid,part.y*grid,grid-2,grid-2);
     });
+    ctx.shadowBlur=0;
 
     ctx.fillStyle="red";
     ctx.fillRect(food.x*grid,food.y*grid,grid-2,grid-2);
+
+    if(obstacle){
+        ctx.fillStyle="orange";
+        obstacle.forEach(b=>{
+            ctx.fillRect(b.x*grid,b.y*grid,grid-2,grid-2);
+        });
+    }
+
+    if(enemy){
+        ctx.shadowBlur=20;
+        ctx.shadowColor="red";
+        ctx.fillStyle="purple";
+        ctx.fillRect(enemy.x*grid,enemy.y*grid,grid-2,grid-2);
+        ctx.shadowBlur=0;
+    }
 
     if(snowActive) drawSnow();
 }
 
 function drawSnow(){
-    if(snowParticles.length<60){
+    if(snowParticles.length<80){
         snowParticles.push({x:Math.random()*canvas.width,y:0});
     }
     ctx.fillStyle="white";
     snowParticles.forEach(p=>{
-        p.y+=40;
+        p.y+=20;
         ctx.fillRect(p.x,p.y,3,3);
     });
 }
@@ -285,11 +363,8 @@ function gameOver(){
         highscore=score;
         localStorage.setItem("noleHigh",highscore);
     }
-
     document.getElementById("highscoreText").innerText="Highscore: "+highscore;
 }
-
-/* ===== Buttons ===== */
 
 document.getElementById("startBtn").onclick=()=>{
     initGame();
