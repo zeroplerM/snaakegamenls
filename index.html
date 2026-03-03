@@ -44,11 +44,11 @@ body{
 
 #controls{
     width:75%;
-    height:75%;
+    height:70%;              /* etwas kleiner */
     display:grid;
     grid-template-columns:1fr 1fr 1fr;
     grid-template-rows:1fr 1fr 1fr;
-    gap:15px;
+    gap:10px;                /* weniger Abstand */
 }
 
 .btn{
@@ -57,7 +57,7 @@ body{
     display:flex;
     justify-content:center;
     align-items:center;
-    font-size:45px;
+    font-size:45px;          /* ca. 10% kleiner */
     color:white;
     user-select:none;
 }
@@ -149,7 +149,7 @@ let snowParticles = [];
 let hue = 0;
 
 /* Startgeschwindigkeit = 10% der alten Basis */
-let baseSpeed = 2000;   // sehr langsam
+let baseSpeed = 400;   // sehr langsam
 let speed = baseSpeed;
 
 document.getElementById("highscoreText").innerText="Highscore: "+highscore;
@@ -236,7 +236,7 @@ function update(){
         score++;
 
         /* Pro Stein 10% schneller */
-        speed *= 0.9;
+        speed *= 0.85;
 
         food = randomFood();
 
@@ -272,7 +272,7 @@ function drawSnow(){
     }
     ctx.fillStyle="white";
     snowParticles.forEach(p=>{
-        p.y+=2;
+        p.y+=20;
         ctx.fillRect(p.x,p.y,3,3);
     });
 }
