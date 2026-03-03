@@ -1,277 +1,304 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NOLE Snake</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Snake Nole Edition</title>
 <style>
 body{
-margin:0;
-background:linear-gradient(135deg,#1e1e2f,#111);
-font-family:Arial;
-display:flex;
-flex-direction:column;
-height:100vh;
-overflow:hidden;
-color:white;
+    margin:0;
+    background:#111;
+    overflow:hidden;
+    touch-action:none;
+    font-family:Arial, sans-serif;
 }
 
-#topBar{
-position:absolute;
-top:10px;
-right:10px;
-z-index:10;
+#gameArea{
+    width:100vw;
+    height:66vh;
+    background:#000;
+    position:relative;
 }
 
-button{
-padding:12px 20px;
-margin-left:10px;
-border:none;
-border-radius:10px;
-font-size:18px;
-background:#00bcd4;
-color:white;
-}
-
-#gameContainer{
-height:66vh;
-display:flex;
-justify-content:center;
-align-items:center;
-}
-
-canvas{
-background:#222;
-border-radius:20px;
-box-shadow:0 0 30px rgba(0,255,255,0.4);
+#uiArea{
+    width:100vw;
+    height:34vh;
+    background:#1a1a1a;
+    display:flex;
+    justify-content:center;
+    align-items:center;
 }
 
 #controls{
-height:34vh;
-display:flex;
-flex-direction:column;
-align-items:center;
-justify-content:center;
+    width:75%;
+    height:75%;
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    grid-template-rows:1fr 1fr 1fr;
+    gap:15px;
 }
 
-#arrows{
-display:grid;
-grid-template-columns:repeat(3,120px);
-grid-template-rows:repeat(2,120px);
-gap:15px;
-justify-content:center;
-align-items:center;
+.btn{
+    background:#333;
+    border-radius:20px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:40px;
+    color:white;
+    user-select:none;
 }
 
-.arrow{
-background:#333;
-border-radius:20px;
-display:flex;
-justify-content:center;
-align-items:center;
-font-size:50px;
+#startPause{
+    position:absolute;
+    top:10px;
+    right:10px;
+    z-index:5;
 }
 
-#message{
-position:absolute;
-top:40%;
-left:50%;
-transform:translate(-50%,-50%);
-font-size:10vw;
-color:gold;
-display:none;
-text-shadow:0 0 20px gold;
+.topBtn{
+    background:#444;
+    padding:10px 20px;
+    border-radius:12px;
+    color:white;
+    margin-left:5px;
+}
+
+#overlay{
+    position:absolute;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.85);
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    font-size:24px;
+    z-index:4;
+}
+
+canvas{
+    display:block;
 }
 </style>
 </head>
-
 <body>
 
-<div id="topBar">
-<button onclick="startGame()">Start</button>
-<button onclick="pauseGame()">Pause</button>
+<div id="gameArea">
+    <div id="overlay">
+        <h2>🐍 Snake Nole</h2>
+        <div id="highscoreText"></div>
+        <p>Drücke START</p>
+    </div>
+    <div id="startPause">
+        <span class="topBtn" id="startBtn">Start</span>
+        <span class="topBtn" id="pauseBtn">Pause</span>
+    </div>
+    <canvas id="game"></canvas>
 </div>
 
-<div id="message">SUPER NOLE</div>
-
-<div id="gameContainer">
-<canvas id="game"></canvas>
-</div>
-
-<div id="controls">
-<div id="arrows">
-<div></div>
-<div class="arrow" onclick="changeDir('up')">↑</div>
-<div></div>
-<div class="arrow" onclick="changeDir('left')">←</div>
-<div class="arrow" onclick="changeDir('down')">↓</div>
-<div class="arrow" onclick="changeDir('right')">→</div>
-</div>
+<div id="uiArea">
+    <div id="controls">
+        <div></div>
+        <div class="btn" data-dir="up">⬆️</div>
+        <div></div>
+        <div class="btn" data-dir="left">⬅️</div>
+        <div></div>
+        <div class="btn" data-dir="right">➡️</div>
+        <div></div>
+        <div class="btn" data-dir="down">⬇️</div>
+        <div></div>
+    </div>
 </div>
 
 <script>
-const canvas=document.getElementById("game");
-const ctx=canvas.getContext("2d");
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight * 0.66;
 
-let size;
-let snake;
-let dir;
-let food;
-let speed;
-let baseSpeed=300; // 80% langsamer
-let gameInterval;
-let running=false;
-let score=0;
-let highscore=localStorage.getItem("noleHigh")||0;
+let grid = 25;
+let snake = [{x:10,y:10}];
+let direction = "right";
+let food = {x:15,y:10};
+let speed = 200;
+let baseSpeed = 200;
+let score = 0;
+let highscore = localStorage.getItem("noleHigh") || 0;
+let running = false;
+let snowActive = false;
+let snowParticles = [];
+let hue = 0;
 
-function resize(){
-canvas.width=window.innerWidth*0.9;
-canvas.height=window.innerHeight*0.6;
-size=Math.floor(canvas.width/25);
-}
-resize();
-window.addEventListener("resize",resize);
+document.getElementById("highscoreText").innerText="Highscore: "+highscore;
 
-function init(){
-snake=[{x:10,y:10}];
-dir="right";
-food=randomFood();
-speed=baseSpeed;
-score=0;
-updateSpeed();
-draw();
-}
+// ===== Audio Engine =====
+let audioCtx;
+let oscillator;
+let gainNode;
 
-function startGame(){
-if(running) return;
-running=true;
-init();
-startMusic();
-loop();
-}
-
-function pauseGame(){
-running=false;
-clearTimeout(gameInterval);
+function startMusic(){
+    if(!audioCtx){
+        audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+        oscillator = audioCtx.createOscillator();
+        gainNode = audioCtx.createGain();
+        oscillator.type="sawtooth";
+        oscillator.frequency.value=220;
+        gainNode.gain.value=0.05;
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+    }
 }
 
-function loop(){
-if(!running) return;
-update();
-draw();
-gameInterval=setTimeout(loop,speed);
+function updateMusicSpeed(){
+    oscillator.frequency.value = 220 + (score*30);
+}
+
+// ===== Controls =====
+document.querySelectorAll(".btn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+        direction = btn.dataset.dir;
+    });
+});
+
+let touchStartX=0;
+let touchStartY=0;
+
+canvas.addEventListener("touchstart",e=>{
+    e.preventDefault();
+    touchStartX=e.touches[0].clientX;
+    touchStartY=e.touches[0].clientY;
+},{passive:false});
+
+canvas.addEventListener("touchmove",e=>{
+    e.preventDefault();
+},{passive:false});
+
+canvas.addEventListener("touchend",e=>{
+    let dx=e.changedTouches[0].clientX-touchStartX;
+    let dy=e.changedTouches[0].clientY-touchStartY;
+    if(Math.abs(dx)>Math.abs(dy)){
+        direction = dx>0?"right":"left";
+    } else {
+        direction = dy>0?"down":"up";
+    }
+},{passive:false});
+
+// ===== Game Loop =====
+function gameLoop(){
+    if(!running) return;
+    setTimeout(()=>{
+        requestAnimationFrame(gameLoop);
+        update();
+        draw();
+    },speed);
 }
 
 function update(){
-let head={...snake[0]};
-if(dir==="up") head.y--;
-if(dir==="down") head.y++;
-if(dir==="left") head.x--;
-if(dir==="right") head.x++;
+    let head = {...snake[0]};
+    if(direction==="right") head.x++;
+    if(direction==="left") head.x--;
+    if(direction==="up") head.y--;
+    if(direction==="down") head.y++;
 
-if(head.x<0||head.y<0||head.x>24||head.y>24||
-snake.some(s=>s.x===head.x&&s.y===head.y)){
-gameOver();
-return;
-}
+    if(head.x<0||head.y<0||head.x>canvas.width/grid||head.y>canvas.height/grid){
+        gameOver();
+        return;
+    }
 
-snake.unshift(head);
+    snake.unshift(head);
 
-if(head.x===food.x&&head.y===food.y){
-score++;
-updateSpeed();
-food=randomFood();
-if(score%3===0) showMessage();
-}else{
-snake.pop();
-}
-}
+    if(head.x===food.x&&head.y===food.y){
+        score++;
+        speed = baseSpeed * Math.pow(0.9, score);
+        updateMusicSpeed();
+        food.x=Math.floor(Math.random()*canvas.width/grid);
+        food.y=Math.floor(Math.random()*canvas.height/grid);
 
-function updateSpeed(){
-speed=baseSpeed*Math.pow(0.9,score);
+        if(score>=6){
+            snowActive=true;
+            speed*=1.3;
+        }
+
+        if(score%3===0){
+            showSuper();
+        }
+
+    } else {
+        snake.pop();
+    }
 }
 
 function draw(){
-ctx.clearRect(0,0,canvas.width,canvas.height);
+    hue+=2;
+    ctx.fillStyle="hsl("+hue+",50%,10%)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
 
-snake.forEach((s,i)=>{
-ctx.fillStyle=`hsl(${(score*40)%360},100%,50%)`;
-ctx.fillRect(s.x*size,s.y*size,size-2,size-2);
-});
+    snake.forEach(part=>{
+        ctx.fillStyle="hsl("+hue+",80%,50%)";
+        ctx.fillRect(part.x*grid,part.y*grid,grid-2,grid-2);
+    });
 
-ctx.fillStyle="red";
-ctx.fillRect(food.x*size,food.y*size,size-2,size-2);
+    ctx.fillStyle="red";
+    ctx.fillRect(food.x*grid,food.y*grid,grid-2,grid-2);
 
-ctx.fillStyle="white";
-ctx.fillText("Score: "+score,10,20);
-ctx.fillText("High: "+highscore,10,40);
+    if(snowActive){
+        drawSnow();
+    }
 }
 
-function randomFood(){
-return{
-x:Math.floor(Math.random()*25),
-y:Math.floor(Math.random()*25)
-};
+function drawSnow(){
+    if(snowParticles.length<50){
+        snowParticles.push({x:Math.random()*canvas.width,y:0});
+    }
+    ctx.fillStyle="white";
+    snowParticles.forEach(p=>{
+        p.y+=2;
+        ctx.fillRect(p.x,p.y,3,3);
+    });
 }
 
-function changeDir(newDir){
-if(!running) return;
-dir=newDir;
+function showSuper(){
+    let div=document.createElement("div");
+    div.innerText="SUPER NOLE";
+    div.style.position="absolute";
+    div.style.top="30%";
+    div.style.width="100%";
+    div.style.textAlign="center";
+    div.style.fontSize="10vw";
+    div.style.color="gold";
+    div.style.fontWeight="bold";
+    document.getElementById("gameArea").appendChild(div);
+    setTimeout(()=>div.remove(),3000);
 }
 
 function gameOver(){
-running=false;
-if(score>highscore){
-highscore=score;
-localStorage.setItem("noleHigh",highscore);
-}
-alert("Game Over");
-}
-
-function showMessage(){
-const msg=document.getElementById("message");
-msg.style.display="block";
-setTimeout(()=>msg.style.display="none",3000);
+    running=false;
+    document.getElementById("overlay").style.display="flex";
+    if(score>highscore){
+        highscore=score;
+        localStorage.setItem("noleHigh",highscore);
+    }
+    document.getElementById("highscoreText").innerText="Highscore: "+highscore;
 }
 
-/* SWIPE CONTROL */
-let startX,startY;
-canvas.addEventListener("touchstart",e=>{
-startX=e.touches[0].clientX;
-startY=e.touches[0].clientY;
-});
+document.getElementById("startBtn").onclick=()=>{
+    snake=[{x:10,y:10}];
+    score=0;
+    speed=baseSpeed*1.8;
+    snowActive=false;
+    snowParticles=[];
+    document.getElementById("overlay").style.display="none";
+    running=true;
+    startMusic();
+    gameLoop();
+};
 
-canvas.addEventListener("touchend",e=>{
-let dx=e.changedTouches[0].clientX-startX;
-let dy=e.changedTouches[0].clientY-startY;
-if(Math.abs(dx)>Math.abs(dy)){
-if(dx>0) changeDir("right");
-else changeDir("left");
-}else{
-if(dy>0) changeDir("down");
-else changeDir("up");
-}
-});
-
-/* MUSIC (WebAudio Beat Loop) */
-let audioCtx;
-function startMusic(){
-if(audioCtx) return;
-audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-setInterval(()=>{
-let osc=audioCtx.createOscillator();
-let gain=audioCtx.createGain();
-osc.connect(gain);
-gain.connect(audioCtx.destination);
-osc.frequency.value=200+Math.random()*400;
-osc.type="triangle";
-gain.gain.setValueAtTime(0.1,audioCtx.currentTime);
-osc.start();
-osc.stop(audioCtx.currentTime+0.2);
-},400);
-}
+document.getElementById("pauseBtn").onclick=()=>{
+    running=!running;
+    if(running) gameLoop();
+};
 </script>
-
 </body>
 </html>
