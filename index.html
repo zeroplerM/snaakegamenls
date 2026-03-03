@@ -2,189 +2,313 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Snake 4.7 Arcade Touch</title>
+<title>Snake 5.0</title>
 <style>
-body { margin:0; overflow:hidden; background:#111; font-family:Arial,sans-serif; color:white; text-align:center; }
-#container { display:flex; flex-direction:column; height:100vh; }
-#gameArea { flex:2; position:relative; }
-canvas { display:block; margin:auto; background:#111; }
-#controlArea { flex:1; position:relative; background:#222; }
-#highscore { position:absolute; top:5px; left:5px; font-size:24px; }
-.controls { position:absolute; bottom:0; left:0; width:100%; height:100%; display:flex; justify-content:space-around; align-items:center; }
-button { border:none; border-radius:8px; font-weight:bold; background:#0ff; color:#111; }
-#startBtn, #pauseBtn { position:absolute; top:5px; right:5px; width:80px; height:50px; font-size:18px; }
-#message { position:absolute; width:100%; top:40%; font-size:40px; font-weight:bold; display:none; text-align:center; text-shadow:0 0 10px #0ff,0 0 20px #0ff; }
+body{
+  margin:0;
+  background:#111;
+  font-family:Arial;
+  overflow:hidden;
+  color:white;
+}
+
+#container{
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+}
+
+/* ---------------- SPIELFELD ---------------- */
+#gameArea{
+  flex:2;
+  position:relative;
+}
+
+canvas{
+  display:block;
+  margin:auto;
+  background:#111;
+}
+
+/* ---------------- STEUERBEREICH ---------------- */
+#controlArea{
+  flex:1;
+  display:flex;
+  background:#222;
+  padding:10px;
+  box-sizing:border-box;
+}
+
+/* LINKS: Pfeile */
+#arrowArea{
+  flex:2;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+#arrows{
+  display:grid;
+  grid-template-columns:120px 120px 120px;
+  grid-template-rows:120px 120px 120px;
+  gap:10px;
+}
+
+/* Pfeile richtig groß */
+.arrowBtn{
+  font-size:40px;
+  background:#00ffff;
+  border:none;
+  border-radius:15px;
+  font-weight:bold;
+}
+
+/* RECHTS: Start / Pause */
+#buttonArea{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:20px;
+}
+
+.controlBtn{
+  width:120px;
+  height:60px;
+  font-size:20px;
+  background:#ffcc00;
+  border:none;
+  border-radius:10px;
+  font-weight:bold;
+}
+
+#message{
+  position:absolute;
+  width:100%;
+  top:40%;
+  text-align:center;
+  font-size:40px;
+  font-weight:bold;
+  display:none;
+}
+
+#highscore{
+  position:absolute;
+  top:10px;
+  left:10px;
+  font-size:22px;
+}
 </style>
 </head>
 <body>
 
 <div id="container">
-  <div id="gameArea">
-    <canvas id="game"></canvas>
-    <div id="message"></div>
-  </div>
-  <div id="controlArea">
-    <p id="highscore">Highscore: 0</p>
-    <div class="controls">
-      <button id="upBtn" style="flex:1; height:33%">↑</button>
-      <button id="leftBtn" style="flex:1; height:33%">←</button>
-      <button id="downBtn" style="flex:1; height:33%">↓</button>
-      <button id="rightBtn" style="flex:1; height:33%">→</button>
-    </div>
-    <button id="startBtn">Start</button>
-    <button id="pauseBtn">Pause</button>
-  </div>
+
+<div id="gameArea">
+<canvas id="game"></canvas>
+<div id="message"></div>
+<div id="highscore"></div>
 </div>
 
-<audio id="bgmusic" loop>
-  <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_95d8c9b9b6.mp3?filename=upbeat-instrumental-12709.mp3" type="audio/mpeg">
-</audio>
+<div id="controlArea">
+
+<div id="arrowArea">
+<div id="arrows">
+<div></div>
+<button class="arrowBtn" id="up">↑</button>
+<div></div>
+
+<button class="arrowBtn" id="left">←</button>
+<button class="arrowBtn" id="down">↓</button>
+<button class="arrowBtn" id="right">→</button>
+</div>
+</div>
+
+<div id="buttonArea">
+<button class="controlBtn" id="start">Start</button>
+<button class="controlBtn" id="pause">Pause</button>
+</div>
+
+</div>
+</div>
 
 <script>
 const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
-const startBtn=document.getElementById("startBtn");
-const pauseBtn=document.getElementById("pauseBtn");
-const message=document.getElementById("message");
-const audio=document.getElementById("bgmusic");
+const msg=document.getElementById("message");
+const startBtn=document.getElementById("start");
+const pauseBtn=document.getElementById("pause");
+const highscoreEl=document.getElementById("highscore");
 
-const upBtn=document.getElementById("upBtn");
-const downBtn=document.getElementById("downBtn");
-const leftBtn=document.getElementById("leftBtn");
-const rightBtn=document.getElementById("rightBtn");
+const up=document.getElementById("up");
+const down=document.getElementById("down");
+const left=document.getElementById("left");
+const right=document.getElementById("right");
 
-const colors=["#39ff14","#00ffff","#ff00ff","#ff6347","#ffd700","#ff4500"];
-let snake=[], dx=0, dy=0, score=0, speed=200, baseSpeed=200, gameInterval=null, food=null;
-let highscore=localStorage.getItem("snakeHigh")||0;
-document.getElementById("highscore").textContent="Highscore: "+highscore;
-
-let grid=20;
-let snowflakes=[], snowActive=false;
+let gridCount=25;
+let gridSize;
+let snake=[];
+let dx=0, dy=0;
+let food;
+let score=0;
+let interval=null;
+let speed=200;
+let baseSpeed=200;
+let gameRunning=false;
 let paused=false;
-let gameStarted=false;
+let snow=false;
+let snowflakes=[];
 
-function resizeCanvas(){
-  canvas.width=document.getElementById("gameArea").clientWidth;
-  canvas.height=document.getElementById("gameArea").clientHeight;
-  grid=Math.floor(Math.min(canvas.width,canvas.height)/25);
+let highscore=localStorage.getItem("snakeHigh") || 0;
+highscoreEl.innerText="Highscore: "+highscore;
+
+function resize(){
+canvas.width=canvas.parentElement.clientWidth;
+canvas.height=canvas.parentElement.clientHeight;
+gridSize=Math.floor(Math.min(canvas.width,canvas.height)/gridCount);
 }
-window.addEventListener("resize",resizeCanvas);
+window.addEventListener("resize",resize);
+resize();
 
-function startGame(){
-  resizeCanvas();
-  snake=[{x:10,y:10}];
-  dx=1; dy=0;
-  score=0; baseSpeed=200; speed=baseSpeed;
-  snowActive=false; snowflakes=[];
-  spawnFood();
-  clearInterval(gameInterval);
-  gameInterval=setInterval(update,speed);
-  audio.currentTime=0; audio.play().catch(()=>{});
-  startBtn.disabled=true; pauseBtn.disabled=false;
-  fadeInCanvas();
-  paused=false;
-  gameStarted=true;
+/* ---------------- START ---------------- */
+startBtn.onclick=()=>{
+if(gameRunning) return;
+
+snake=[{x:12,y:12}];
+dx=1; dy=0;
+score=0;
+speed=baseSpeed;
+snow=false;
+snowflakes=[];
+spawnFood();
+
+interval=setInterval(update,speed);
+gameRunning=true;
+paused=false;
+msg.style.display="none";
+};
+
+/* ---------------- PAUSE ---------------- */
+pauseBtn.onclick=()=>{
+if(!gameRunning) return;
+
+if(!paused){
+clearInterval(interval);
+paused=true;
+pauseBtn.innerText="Resume";
+}else{
+interval=setInterval(update,speed);
+paused=false;
+pauseBtn.innerText="Pause";
+}
+};
+
+/* ---------------- STEUERUNG ---------------- */
+function setDir(x,y){
+if(!gameRunning) return;
+if(dx===-x && dy===-y) return;
+dx=x; dy=y;
 }
 
-function fadeInCanvas(){
-  canvas.style.opacity=0;
-  let alpha=0;
-  const fade=setInterval(()=>{
-    alpha+=0.05; canvas.style.opacity=alpha;
-    if(alpha>=1) clearInterval(fade);
-  },30);
-  message.innerText="Ready!"; message.style.display="block";
-  setTimeout(()=>{message.style.display="none"},1000);
+up.onclick=()=>setDir(0,-1);
+down.onclick=()=>setDir(0,1);
+left.onclick=()=>setDir(-1,0);
+right.onclick=()=>setDir(1,0);
+
+/* ---------------- SPIEL ---------------- */
+function spawnFood(){
+food={
+x:Math.floor(Math.random()*gridCount),
+y:Math.floor(Math.random()*gridCount)
+};
 }
-
-function spawnFood(){ food={x:Math.floor(Math.random()*25),y:Math.floor(Math.random()*25)}; }
-
-function setDirection(dir){
-  if(!gameStarted) return;
-  if(dir==="up" && dy!==1){dx=0; dy=-1;}
-  if(dir==="down" && dy!==-1){dx=0; dy=1;}
-  if(dir==="left" && dx!==1){dx=-1; dy=0;}
-  if(dir==="right" && dx!==-1){dx=1; dy=0;}
-}
-
-// Keyboard & Button Events
-document.addEventListener("keydown",e=>{ setDirection({ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right"}[e.key]); });
-upBtn.addEventListener("click",()=>setDirection("up"));
-downBtn.addEventListener("click",()=>setDirection("down"));
-leftBtn.addEventListener("click",()=>setDirection("left"));
-rightBtn.addEventListener("click",()=>setDirection("right"));
-
-// Swipe
-let touchStartX=0, touchStartY=0;
-canvas.addEventListener("touchstart", e=>{ const t=e.touches[0]; touchStartX=t.clientX; touchStartY=t.clientY; });
-canvas.addEventListener("touchend", e=>{
-  if(!gameStarted) return;
-  const t=e.changedTouches[0]; 
-  const dxSwipe = t.clientX - touchStartX;
-  const dySwipe = t.clientY - touchStartY;
-  if(Math.abs(dxSwipe) > Math.abs(dySwipe)){
-    if(dxSwipe > 20) setDirection("right"); else if(dxSwipe < -20) setDirection("left");
-  } else {
-    if(dySwipe > 20) setDirection("down"); else if(dySwipe < -20) setDirection("up");
-  }
-});
-
-// Pause
-pauseBtn.addEventListener("click",()=>{
-  if(!paused){ clearInterval(gameInterval); paused=true; pauseBtn.textContent="Resume";}
-  else { gameInterval=setInterval(update,speed); paused=false; pauseBtn.textContent="Pause";}
-});
 
 function update(){
-  const head={x:snake[0].x+dx,y:snake[0].y+dy};
-  if(head.x<0||head.y<0||head.x>=25||head.y>=25||snake.some(s=>s.x===head.x&&s.y===head.y)){ endGame(); return; }
-  snake.unshift(head);
-  if(head.x===food.x && head.y===food.y){ score++; spawnFood(); handleEffects(); }
-  else{ snake.pop(); }
-  draw();
+let head={x:snake[0].x+dx,y:snake[0].y+dy};
+
+if(head.x<0||head.y<0||head.x>=gridCount||head.y>=gridCount||
+snake.some(s=>s.x===head.x&&s.y===head.y)){
+endGame();
+return;
+}
+
+snake.unshift(head);
+
+if(head.x===food.x&&head.y===food.y){
+score++;
+spawnFood();
+handleEffects();
+}else{
+snake.pop();
+}
+
+draw();
 }
 
 function handleEffects(){
-  if(score<=20){ let factor=1-(score*0.05); speed=baseSpeed*factor; clearInterval(gameInterval); if(!paused) gameInterval=setInterval(update,speed); }
-  if(score%3===0){ ctx.fillStyle=colors[Math.floor(score/3)%colors.length]; }
-  if(score===5){ message.style.display="block"; message.style.color="gold"; message.innerText="toll nole"; setTimeout(()=>{message.style.display="none"},2000);}
-  if(score>=6 && score%8===0){ 
-    snowActive=true; snowflakes=[]; 
-    for(let i=0;i<50;i++){ snowflakes.push({x:Math.random()*canvas.width, y:Math.random()*canvas.height, r:Math.random()*3+1, speed:Math.random()*2+1}); } 
-    speed*=1.3; clearInterval(gameInterval); if(!paused) gameInterval=setInterval(update,speed); 
-    setTimeout(()=>{snowActive=false; snowflakes=[];},7000);}
+
+// Speed steigern
+if(score<=20){
+speed=baseSpeed*(1-(score*0.04));
+clearInterval(interval);
+interval=setInterval(update,speed);
 }
 
-function drawSnow(){ 
-  if(!snowActive) return; 
-  ctx.fillStyle="white"; 
-  snowflakes.forEach(f=>{ 
-    ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); 
-    ctx.fill(); 
-    f.y+=f.speed; 
-    if(f.y>canvas.height) f.y=0; 
-  }); 
+// 5 Punkte
+if(score===5){
+msg.innerText="toll nole";
+msg.style.color="gold";
+msg.style.display="block";
+setTimeout(()=>msg.style.display="none",2000);
+}
+
+// Schnee ab 6
+if(score>=6){
+snow=true;
+speed*=1.3;
+clearInterval(interval);
+interval=setInterval(update,speed);
+}
 }
 
 function draw(){
-  ctx.fillStyle="#111";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  drawSnow();
-  // Food Glow
-  ctx.shadowColor="#0ff"; ctx.shadowBlur=15; ctx.fillStyle="#ff0";
-  ctx.beginPath(); ctx.arc(food.x*grid+grid/2,food.y*grid+grid/2,grid/2,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
-  // Snake Neon
-  snake.forEach((s,i)=>{ ctx.shadowColor=colors[i%colors.length]; ctx.shadowBlur=20; ctx.fillStyle=colors[i%colors.length]; ctx.fillRect(s.x*grid,s.y*grid,grid,grid); }); ctx.shadowBlur=0;
+ctx.fillStyle="#111";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+// Schnee
+if(snow){
+ctx.fillStyle="white";
+for(let i=0;i<40;i++){
+let x=Math.random()*canvas.width;
+let y=Math.random()*canvas.height;
+ctx.fillRect(x,y,2,2);
+}
 }
 
-function endGame(){ 
-  clearInterval(gameInterval); message.style.display="block"; message.style.color="white"; message.innerText="Game Over"; startBtn.disabled=false; pauseBtn.disabled=true; audio.pause();
-  gameStarted=false;
-  if(score>highscore){ localStorage.setItem("snakeHigh",score); document.getElementById("highscore").textContent="Highscore: "+score; }
+// Food
+ctx.fillStyle="#ff0";
+ctx.fillRect(food.x*gridSize,food.y*gridSize,gridSize,gridSize);
+
+// Snake
+ctx.fillStyle="#0ff";
+snake.forEach(s=>{
+ctx.fillRect(s.x*gridSize,s.y*gridSize,gridSize,gridSize);
+});
 }
 
-startBtn.addEventListener("click",startGame);
-pauseBtn.disabled=true;
+function endGame(){
+clearInterval(interval);
+gameRunning=false;
+msg.innerText="Game Over";
+msg.style.color="white";
+msg.style.display="block";
+
+if(score>highscore){
+localStorage.setItem("snakeHigh",score);
+highscoreEl.innerText="Highscore: "+score;
+}
+}
 </script>
 </body>
 </html>
